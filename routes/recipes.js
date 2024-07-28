@@ -25,7 +25,7 @@ recipesRouter.get('/get-recipe-to-update/:recipeId', validateAuth, getRecipeToUp
 recipesRouter.put('/update-recipe/:id', [validateAuth, uploads.single('image')], updateRecipe)
 recipesRouter.get('/recipe-image/:file', getRecipeImage)
 recipesRouter.get('/user-recipes/:id/:page?', getUserRecipes)
-recipesRouter.get('/by-title/:title/:page?', getByTitle) // TODO hacer esto
+recipesRouter.get('/by-title/:title/:page?', getByTitle)
 recipesRouter.get('/by-category/:categoryId/:page?', getByCategory)
 recipesRouter.get('/best-recipes', getBestRecipes)
 recipesRouter.get('/random-recipes/:page?', getRandomRecipes)

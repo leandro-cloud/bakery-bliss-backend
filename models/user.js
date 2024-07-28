@@ -9,7 +9,7 @@ const UserSchema = Schema({
     type: String,
     required: true
   },
-  userName: { // No se si es necesario
+  userName: {
     type: String,
     required: true,
     unique: true,

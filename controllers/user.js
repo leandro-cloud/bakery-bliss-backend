@@ -1,12 +1,13 @@
 import { User } from '../models/user.js'
 import bcrypt from 'bcrypt'
-import { generateAccessToken, generateRefreshToken, validateToken } from '../services/tokenService.js'
+import { createToken, generateAccessToken, generateRefreshToken, validateToken } from '../services/tokenService.js'
 import { CustomError } from '../services/errors.js'
 import { encryptPassword } from '../services/encriptPassword.js'
 import { errorResponse, failedRequestResponse } from '../services/responses.js'
 import fs from 'node:fs'
 import path from 'node:path'
 import { Favorite } from '../models/favorite.js'
+import nodemailer from 'nodemailer'
 
 // Metodo para registrar usuarios
 export const register = async (req, res) => {
@@ -86,8 +87,8 @@ export const login = async (req, res) => {
     const refreshToken = await generateRefreshToken(user._id)
 
     // Generar cookies
-    res.cookie('accessToken', accessToken, { httpOnly: true, maxAge: 60 * 60 * 1000 })
-    res.cookie('refreshToken', refreshToken, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000 })
+    res.cookie('accessToken', accessToken, { httpOnly: true, maxAge: 24 * 60 * 60 * 1000 })
+    res.cookie('refreshToken', refreshToken, { httpOnly: true, maxAge: 30 * 24 * 60 * 60 * 1000 })
 
     // Lista de favoritos
     const favorites = await Favorite.find({ userId: user._id }).select('recipeId  -_id')
@@ -121,7 +122,7 @@ export const myProfile = async (req, res) => {
     if (!user) {
       return failedRequestResponse(res, "The user doesn't exists", 404)
     }
-    // TODO analizar si hago dos peticiones o una
+
     const favorites = await Favorite.find({ userId: user._id }).select('recipeId  -_id')
 
     return res.status(200).send({
@@ -144,7 +145,6 @@ export const myProfile = async (req, res) => {
 }
 
 // Metodo para actualizar los datos del usuario
-// TODO analizar si tengo que retornar el nuevo documento modificado
 export const updateUser = async (req, res) => {
   try {
     // Obtener los datos del usuario
@@ -206,8 +206,7 @@ export const updateUser = async (req, res) => {
   }
 }
 
-// TODO crear endpoint para actualizar solo la contraseña
-
+// Endpoint para cambiar contraseña
 export const changePassword = async (req, res) => {
   try {
     const { userId } = req.user
@@ -291,7 +290,7 @@ export const refreshAccessToken = async (req, res) => {
 
     const newAccessToken = generateAccessToken(payload)
 
-    res.cookie('accessToken', newAccessToken, { httpOnly: true, maxAge: 60 * 60 * 1000 })
+    res.cookie('accessToken', newAccessToken, { httpOnly: true, maxAge: 24 * 60 * 60 * 1000 })
     return res.status(200).send({
       status: 'success',
       message: 'New Access token generated correctly'
@@ -348,7 +347,6 @@ export const uploadProfilePicture = async (req, res) => {
 
     // verificar si la actualización fue exitosa
     if (!userUpdated) {
-      // TODO borrar la imagen
       fs.unlinkSync(req.file.path)
       throw new CustomError('Image upload error', 500)
     }
@@ -390,7 +388,6 @@ export const getProfileImage = (req, res) => {
 }
 
 // Metodo para mostrar el perfil de un usuario
-// TODO incluir lista de recetas creadas
 export const profile = async (req, res) => {
   try {
     // Obtener el ID del usuario desde los parametros de la URL
@@ -408,6 +405,77 @@ export const profile = async (req, res) => {
     return res.status(200).json({
       status: 'success',
       user: userProfile
+    })
+  } catch (error) {
+    return errorResponse(res, error)
+  }
+}
+
+export const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body
+
+    console.log(email)
+    if (!email) {
+      return failedRequestResponse(res, 'Email is required', 400)
+    }
+
+    const user = await User.findOne({ email })
+
+    if (!user) {
+      return failedRequestResponse(res, 'User not found', 404)
+    }
+
+    const token = createToken({ id: user._id })
+
+    const transporter = nodemailer.createTransport({
+      service: 'Gmail',
+      auth: {
+        user: 'bakeryblissrecipes@gmail.com',
+        pass: process.env.EMAIL_KEY
+      }
+    })
+
+    const mailOptions = {
+      from: 'bakeryblissrecipes@gmail.com',
+      to: email,
+      subject: 'Reset password',
+      text: 'You are receiving this because you (or someone else) have requested the reset of the password for your account.\n\n' +
+        'Please click on the following link, or paste this into your browser to complete the process:\n\n' +
+        `http://localhost:5173/reset-password/${token}\n\n` +
+        'If you did not request this, please ignore this email and your password will remain unchanged.\n'
+    }
+
+    await transporter.sendMail(mailOptions)
+    return res.status(200).send({ status: 'success', message: 'Email sent' })
+  } catch (error) {
+    return errorResponse(res, error)
+  }
+}
+
+export const resetPassword = async (req, res) => {
+  try {
+    const { token } = req.params
+    const { password } = req.body
+
+    if (!token || !password) {
+      return failedRequestResponse(res, 'Data is missing', 400)
+    }
+
+    const decoded = validateToken(token, 'general')
+    const id = decoded.id
+
+    console.log(token, password)
+    const hashPassword = await encryptPassword(password)
+    const changePassword = await User.findByIdAndUpdate({ _id: id }, { password: hashPassword })
+
+    if (!changePassword) {
+      return failedRequestResponse(res, 'Error updating password', 400)
+    }
+
+    return res.status(200).send({
+      status: 'success',
+      message: 'Password changed successfuly'
     })
   } catch (error) {
     return errorResponse(res, error)

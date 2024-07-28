@@ -58,8 +58,6 @@ export const createRecipe = async (req, res) => {
   }
 }
 // Metodo para leer una receta
-// TODO obtener tambien cuantos favoritos tiene la receta ***
-// TODO arreglar la categoria
 export const getRecipe = async (req, res) => {
   try {
     // Obtener el ID de la receta de los parametros
@@ -145,7 +143,6 @@ export const deleteRecipe = async (req, res) => {
       return failedRequestResponse(res, 'recipe not found or you are not authorized to delete it', 400)
     }
 
-    // TODO ver si hay necesidad de manejar errores
     // Borrar los favoritos
     await Favorite.deleteMany({ recipeId })
 
@@ -281,7 +278,6 @@ export const getRandomRecipes = async (req, res) => {
 }
 
 // Metodo para obtener las recetas del usuario
-// TODO mandar solo lo necesario
 export const getUserRecipes = async (req, res) => {
   try {
     const authorId = req.params.id
@@ -316,7 +312,6 @@ export const getUserRecipes = async (req, res) => {
 }
 
 // Buscar recetas por titulo
-// TODO mandar solo lo necesario
 export const getByTitle = async (req, res) => {
   try {
     // Atrapar el query de busqueda
@@ -352,8 +347,6 @@ export const getByTitle = async (req, res) => {
 }
 
 // buscar recetas por categoria
-// TODO mandar solo lo necesario
-// TODO Arreglara el endpoint y analizar si con nombre de la categoria o con id
 export const getByCategory = async (req, res) => {
   try {
     const { categoryId } = req.params
@@ -388,7 +381,6 @@ export const getByCategory = async (req, res) => {
 }
 
 // Endpoint para las mejores recetas
-// TODO devolver mas cosas si es necesario
 export const getBestRecipes = async (req, res) => {
   try {
     // Buscar las mejores recetas
